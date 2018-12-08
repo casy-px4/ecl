@@ -47,6 +47,8 @@
 
 void Ekf::fuseVelPosHeight()
 {
+	bool range_fusion_enabled = true;
+
 	bool fuse_map[6] = {}; // map of booleans true when [VN,VE,VD,PN,PE,PD] observations are available
 	bool innov_check_pass_map[6] = {}; // true when innovations consistency checks pass for [VN,VE,VD,PN,PE,PD] observations
 	float R[6] = {}; // observation variances for [VN,VE,VD,PN,PE,PD]
@@ -137,7 +139,7 @@ void Ekf::fuseVelPosHeight()
 		} else if (_control_status.flags.rng_hgt && (_R_rng_to_earth_2_2 > _params.range_cos_max_tilt)) {
 			fuse_map[5] = true;
 			// use range finder with tilt correction
-			innovation[5] = _state.pos(2) - (-math::max(_range_sample_delayed.rng * _R_rng_to_earth_2_2,
+			innovation[5] = _state.pos(2) - (-math::max(_range_sample_delayed.rng * (range_fusion_enabled ? 1 : _R_rng_to_earth_2_2),
 							 _params.rng_gnd_clearance)) - _hgt_sensor_offset;
 			// observation variance - user parameter defined
 			R[5] = fmaxf((sq(_params.range_noise) + sq(_params.range_noise_scaler * _range_sample_delayed.rng)) * sq(_R_rng_to_earth_2_2), 0.01f);

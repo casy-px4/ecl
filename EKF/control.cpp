@@ -1167,6 +1167,7 @@ void Ekf::checkRangeDataValidity()
 	// check if out of date
 	if ((_imu_sample_delayed.time_us - _range_sample_delayed .time_us) > 2 * RNG_MAX_INTERVAL) {
 		_rng_hgt_faulty = true;
+		PX4_INFO("rng_data_invalid reason: timeout -- 1");
 		return;
 	}
 
@@ -1186,6 +1187,7 @@ void Ekf::checkRangeDataValidity()
 	// Check if excessively tilted
 	if (_R_rng_to_earth_2_2 < _params.range_cos_max_tilt) {
 		_rng_hgt_faulty = true;
+		PX4_INFO("rng_data_invalid reason: tilted -- 2");
 		return;
 	}
 
@@ -1194,6 +1196,7 @@ void Ekf::checkRangeDataValidity()
 	|| (_range_sample_delayed.rng < _rng_valid_min_val)) {
 		if (_control_status.flags.in_air) {
 			_rng_hgt_faulty = true;
+			PX4_INFO("rng_data_invalid reason: out of range -- 3");
 			return;
 		} else {
 			// Range finders can fail to provide valid readings when resting on the ground
@@ -1227,6 +1230,7 @@ void Ekf::checkRangeDataValidity()
 
 			_control_status.flags.rng_stuck = true;
 			_rng_hgt_faulty = true;
+			PX4_INFO("rng_data_invalid reason: stucked measure -- 4");
 		}
 
 	} else {

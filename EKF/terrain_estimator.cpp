@@ -102,7 +102,7 @@ void Ekf::runTerrainEstimator()
 			_sin_tilt_rng = sinf(_params.rng_sens_pitch);
 			_cos_tilt_rng = cosf(_params.rng_sens_pitch);
 
-		}
+		} else if (_range_data_ready) PX4_INFO("faulty: %d", _rng_hgt_faulty);
 
 		//constrain _terrain_vpos to be a minimum of _params.rng_gnd_clearance larger than _state.pos(2)
 		if (_terrain_vpos - _state.pos(2) < _params.rng_gnd_clearance) {
@@ -116,10 +116,12 @@ void Ekf::runTerrainEstimator()
 
 void Ekf::fuseHagl()
 {
+	bool range_fusion_enabled = true;
+
 	// If the vehicle is excessively tilted, do not try to fuse range finder observations
-	if (_R_rng_to_earth_2_2 > _params.range_cos_max_tilt) {
+	if (range_fusion_enabled  || (!range_fusion_enabled && _R_rng_to_earth_2_2 > _params.range_cos_max_tilt)) {
 		// get a height above ground measurement from the range finder assuming a flat earth
-		float meas_hagl = _range_sample_delayed.rng * _R_rng_to_earth_2_2;
+		float meas_hagl = range_fusion_enabled ? _range_sample_delayed.rng : _range_sample_delayed.rng * _R_rng_to_earth_2_2;
 
 		// predict the hagl from the vehicle position and terrain height
 		float pred_hagl = _terrain_vpos - _state.pos(2);
@@ -128,7 +130,7 @@ void Ekf::fuseHagl()
 		_hagl_innov = pred_hagl - meas_hagl;
 
 		// calculate the observation variance adding the variance of the vehicles own height uncertainty
-		float obs_variance = fmaxf(P[9][9] * _params.vehicle_variance_scaler, 0.0f) + sq(_params.range_noise) + sq(_params.range_noise_scaler * _range_sample_delayed.rng);
+		float obs_variance = fmaxf(P[9][9], 0.0f) + sq(_params.range_noise) + sq(_params.range_noise_scaler * _range_sample_delayed.rng);
 
 		// calculate the innovation variance - limiting it to prevent a badly conditioned fusion
 		_hagl_innov_var = fmaxf(_terrain_var + obs_variance, obs_variance);
@@ -137,9 +139,9 @@ void Ekf::fuseHagl()
 		float gate_size = fmaxf(_params.range_innov_gate, 1.0f);
 		_terr_test_ratio = sq(_hagl_innov) / (sq(gate_size) * _hagl_innov_var);
 
-		if (_terr_test_ratio <= 1.0f) {
+		if (range_fusion_enabled || (!range_fusion_enabled && _terr_test_ratio <= 1.0f)) {
 			// calculate the Kalman gain
-			float gain = _terrain_var / _hagl_innov_var;
+			float gain = range_fusion_enabled ? 0.9f : _terrain_var / _hagl_innov_var;
 			// correct the state
 			_terrain_vpos -= gain * _hagl_innov;
 			// correct the variance
@@ -147,6 +149,7 @@ void Ekf::fuseHagl()
 			// record last successful fusion event
 			_time_last_hagl_fuse = _time_last_imu;
 			_innov_check_fail_status.flags.reject_hagl = false;
+			PX4_INFO("Kgain %.3f", (double) gain);
 		} else {
 			// If we have been rejecting range data for too long, reset to measurement
 			if (_time_last_imu - _time_last_hagl_fuse > (uint64_t)10E6) {
