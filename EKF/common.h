@@ -279,6 +279,7 @@ struct parameters {
 	float beta_avg_ft_us{150000.0f};	///< The average time between synthetic sideslip measurements (uSec)
 
 	// range finder fusion
+	int32_t range_fused{1};
 	float range_noise{0.1f};		///< observation noise for range finder measurements (m)
 	float range_innov_gate{5.0f};		///< range finder fusion innovation consistency gate size (STD)
 	float rng_gnd_clearance{0.1f};		///< minimum valid value for range when on ground (m)

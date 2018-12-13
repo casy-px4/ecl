@@ -1185,7 +1185,7 @@ void Ekf::checkRangeDataValidity()
 	}
 
 	// Check if excessively tilted
-	if (_R_rng_to_earth_2_2 < _params.range_cos_max_tilt) {
+	if (!_params.range_fused && _R_rng_to_earth_2_2 < _params.range_cos_max_tilt) {
 		_rng_hgt_faulty = true;
 		PX4_INFO("rng_data_invalid reason: tilted -- 2");
 		return;
