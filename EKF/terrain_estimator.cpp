@@ -113,8 +113,9 @@ void Ekf::runTerrainEstimator()
 	// Update terrain validity
 	update_terrain_valid();
 }
-
-// If the vehicle is excessively tilted, do not try to fuse range finder observations
+void Ekf::fuseHagl()
+{
+	// If the vehicle is excessively tilted, do not try to fuse range finder observations
 	if (_params.range_fused  || (!_params.range_fused && _R_rng_to_earth_2_2 > _params.range_cos_max_tilt)) {
 		// get a height above ground measurement from the range finder assuming a flat earth
 		float meas_hagl = _params.range_fused ? _range_sample_delayed.rng : _range_sample_delayed.rng * _R_rng_to_earth_2_2;
@@ -126,7 +127,7 @@ void Ekf::runTerrainEstimator()
 		_hagl_innov = pred_hagl - meas_hagl;
 
 		// calculate the observation variance adding the variance of the vehicles own height uncertainty
-		float obs_variance = fmaxf(P[9][9], 0.0f) + sq(_params.range_noise) + sq(_params.range_noise_scaler * _range_sample_delayed.rng);
+		float obs_variance = fmaxf(P[9][9] * _params.vehicle_variance_scaler, 0.0f) + sq(_params.range_noise) + sq(_params.range_noise_scaler * _range_sample_delayed.rng);
 
 		// calculate the innovation variance - limiting it to prevent a badly conditioned fusion
 		_hagl_innov_var = fmaxf(_terrain_var + obs_variance, obs_variance);
